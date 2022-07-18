@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.db import models
 from django.utils.translation import ugettext as _
-from django.utils.text import slugify
+from django.urls import reverse
 
 
 # Create your models here.
@@ -10,14 +10,10 @@ class Category(models.Model):
     """Категории"""
     name = models.CharField(verbose_name=_('Называние'), max_length=255)
     description = models.TextField(verbose_name=_('Описание'))
-    slug = models.SlugField(max_length=150, unique=True)
+    slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        self.slug = slugify(self.name)
-        super(Category, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name_plural = 'Categories'
@@ -26,27 +22,22 @@ class Category(models.Model):
 class Actor(models.Model):
     """Актеры и режисеры"""
     name = models.CharField(verbose_name=_("Имя"), max_length=255)
-    dob = models.DateField(verbose_name=_('Дата рождение'))
     description = models.TextField(verbose_name=_('Описание'))
     age = models.PositiveIntegerField(verbose_name=_("Возраст"), blank=True, null=True)
 
     def __str__(self):
         return self.name
 
-    def save(self, *args, **kwargs):
-        self.age = datetime.datetime.today().year - int(self.dob[-1:-4: -1])
-        super(Actor, self).save()
-
 
 class Movie(models.Model):
     """Фильмы"""
-    title = models.CharField(verbose_name=_("Называние"), max_length=255)
+    name = models.CharField(verbose_name=_("Называние"), max_length=255)
     category = models.ForeignKey(
         Category, verbose_name=_('Категория'), on_delete=models.SET_NULL, null=True
     )
     tagline = models.CharField(verbose_name=_('Слоган'), default='', max_length=255)
     description = models.TextField(verbose_name=_('Описание'))
-    poster = models.ImageField(verbose_name=_('Постер'), upload_to='movies/')
+    poster = models.ImageField(verbose_name=_('Постер'), upload_to='actors/')
     year = models.DateField(verbose_name=_('год выпуска'), default=2000)
     directors = models.ManyToManyField(
         Actor, verbose_name=_('Режиссер'), related_name='directors'
@@ -56,21 +47,20 @@ class Movie(models.Model):
     )
     genre = models.ManyToManyField("Genre", verbose_name=_('жанр'))
     premier = models.DateField(
-        verbose_name=_('Премьера'), default=timezone.now()
+        verbose_name=_('Премьера'), default=timezone.now
     )
     budget = models.PositiveIntegerField(
         default=0, help_text='Сумму указать в долларах', verbose_name=_("Бюджет")
     )
     fees = models.PositiveIntegerField(default=0, verbose_name=_('Сборы с фильма'))
-    slug = models.SlugField(unique=True, max_length=255)
+    slug = models.SlugField(unique=True, max_length=255, blank=True, null=True)
     draft = models.BooleanField(default=False, verbose_name=_('Черновик'))
 
     def __str__(self):
-        return self.title
+        return self.name
 
-    def save(self, *args, **kwargs):
-        self.slug = slugify(self.title)
-        super(Movie, self).save(*args, **kwargs)
+    def get_absolute_url(self):
+        return reverse('movie', args=[str(self.id)])
 
 
 class Genre(models.Model):
@@ -81,10 +71,6 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        self.slug = slugify(self.name)
-        super(Genre, self).save(*args, **kwargs)
 
 
 class MovieShots(models.Model):
